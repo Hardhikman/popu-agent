@@ -2,7 +2,15 @@
 
 This project contains the core logic for Popu Agent, a multi-agent system designed to assist users in analyzing public policies. The agent is built using Google Agent Development Kit (ADK) and follows a modular architecture.
 
-![Policy Analysis Architecture](./thumbnail.png "Policy Analysis Workflow")
+## Policy Analysis Architecture
+![Policy Analysis Architecture](./policy_analysis_architecture.png "Policy Analysis Workflow")
+
+The diagram above illustrates the end-to-end workflow of the Popu Agent system, showing how policy topics flow through the four specialized agents to produce comprehensive analysis.
+
+## System Architecture
+![System Architecture](./system_architecture.png "System Components")
+
+The system architecture diagram shows the relationship between the core components of the Popu Agent, including the Gradio UI, agent orchestrator, specialized agents, and external tools.
 
 ## Project Overview
 
@@ -22,8 +30,6 @@ Core to Popu Agent is the multi-agent system architecture—a prime example of c
 
 The system orchestrates four specialized agents working in sequence:
 
-![Architecture](./flow_adk_web.png "Policy Analysis Workflow")
-
 #### 1. Policy Analyst Agent
 
 This agent is responsible for researching and analyzing policy topics with real-world data. It structures its response under nine key societal segments to ensure comprehensive coverage:
@@ -37,7 +43,7 @@ This agent is responsible for researching and analyzing policy topics with real-
 8. Youth
 9. Tribals
 
-The analyst must use the [fetch_policy_data](./popu_agent/tools.py) tool to gather real statistics for each section.
+The analyst must use the [fetch_policy_data](./tools.py) tool to gather real statistics for each section.
 
 #### 2. Policy Critic Agent
 
@@ -46,7 +52,7 @@ This agent provides a critical review of the initial analysis, highlighting risk
 - Failed examples from other countries
 - Direct negative impacts on specific groups
 
-The critic also uses the [fetch_policy_data](./popu_agent/tools.py) tool to find counter-evidence.
+The critic also uses the [fetch_policy_data](./tools.py) tool to find counter-evidence.
 
 #### 3. Policy Lobbyist Agent
 
@@ -60,13 +66,17 @@ This agent creates an executive summary of the complete analysis process, includ
 
 The Popu Agent and its sub-agents are equipped with tools to perform their tasks effectively.
 
-#### Real-Time Data Fetching ([fetch_policy_data](./popu_agent/tools.py))
+#### Real-Time Data Fetching ([fetch_policy_data](./tools.py))
 
 This tool is crucial for generating fact-based policy analysis. It searches the web for real-time data, statistics, and news about policies using the Tavily API. The tool returns formatted search results with sources, ensuring all analysis is grounded in current facts.
 
-#### Retry Logic ([run_with_retry](./popu_agent/main.py))
+#### Retry Logic ([run_with_retry](./main.py))
 
 A robust error handling mechanism that automatically retries API calls when encountering 503 or 429 errors, ensuring reliable operation even under high load conditions.
+
+#### Report Export ([generate_markdown_report](./main.py))
+
+Allows users to export the complete policy analysis as a downloadable Markdown file. The exported report includes all sections of the analysis (Analysis, Critique, Lobbyist, and Summary) along with metadata such as the policy topic and generation timestamp. Users can download the report using the "Download Full Report as MD" button in the Gradio interface after completing an analysis.
 
 ### Conclusion
 
