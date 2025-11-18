@@ -37,7 +37,7 @@ This agent is responsible for researching and analyzing policy topics with real-
 8. Youth
 9. Tribals
 
-The analyst must use the [fetch_policy_data](./popu_agent/tools.py) tool to gather real statistics for each section.
+The analyst must use the [fetch_policy_data](./tools.py) tool to gather real statistics for each section.
 
 #### 2. Policy Critic Agent
 
@@ -46,7 +46,7 @@ This agent provides a critical review of the initial analysis, highlighting risk
 - Failed examples from other countries
 - Direct negative impacts on specific groups
 
-The critic also uses the [fetch_policy_data](./popu_agent/tools.py) tool to find counter-evidence.
+The critic also uses the [fetch_policy_data](./tools.py) tool to find counter-evidence.
 
 #### 3. Policy Lobbyist Agent
 
@@ -60,11 +60,11 @@ This agent creates an executive summary of the complete analysis process, includ
 
 The Popu Agent and its sub-agents are equipped with tools to perform their tasks effectively.
 
-#### Real-Time Data Fetching ([fetch_policy_data](./popu_agent/tools.py))
+#### Real-Time Data Fetching ([fetch_policy_data](./tools.py))
 
 This tool is crucial for generating fact-based policy analysis. It searches the web for real-time data, statistics, and news about policies using the Tavily API. The tool returns formatted search results with sources, ensuring all analysis is grounded in current facts.
 
-#### Retry Logic ([run_with_retry](./popu_agent/main.py))
+#### Retry Logic ([run_with_retry](./main.py))
 
 A robust error handling mechanism that automatically retries API calls when encountering 503 or 429 errors, ensuring reliable operation even under high load conditions.
 
