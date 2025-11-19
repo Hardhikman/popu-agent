@@ -1,6 +1,6 @@
 # Popu Agent - Data-Driven Policy Analyzer
 
-This project contains the core logic for Popu Agent, a multi-agent system designed to assist users in analyzing public policies. The agent is built using Google Agent Development Kit (ADK) and follows a modular architecture.
+This project contains the core logic for Popu Agent, a multi-agent system designed to assist users in analyzing public policies. The agent is built using Google Agent Development Kit (ADK) with the Gemini 2.5 Flash model and follows a modular architecture.
 
 ## Policy Analysis Architecture
 ![Policy Analysis Architecture](./policy_analysis_architecture.png "Policy Analysis Workflow")
@@ -32,16 +32,17 @@ The system orchestrates four specialized agents working in sequence:
 
 #### 1. Policy Analyst Agent
 
-This agent is responsible for researching and analyzing policy topics with real-world data. It structures its response under nine key societal segments to ensure comprehensive coverage:
+This agent is responsible for researching and analyzing policy topics with real-world data. It structures its response under ten key societal segments to ensure comprehensive coverage:
 1. Rural Society
 2. Urban Society
 3. Working Class
-4. Farmers
-5. Manufacturing
-6. Services
-7. Women
-8. Youth
-9. Tribals
+4. Backward class
+5. Farmers
+6. Manufacturing
+7. Services
+8. Women
+9. Youth
+10. Tribals
 
 The analyst must use the [fetch_policy_data](./tools.py) tool to gather real statistics for each section.
 
@@ -68,7 +69,7 @@ The Popu Agent and its sub-agents are equipped with tools to perform their tasks
 
 #### Real-Time Data Fetching ([fetch_policy_data](./tools.py))
 
-This tool is crucial for generating fact-based policy analysis. It searches the web for real-time data, statistics, and news about policies using the Tavily API. The tool returns formatted search results with sources, ensuring all analysis is grounded in current facts.
+This tool is crucial for generating fact-based policy analysis. It searches the web for real-time data, statistics, and news about policies using either the Tavily API or Google Search. The tool returns formatted search results with sources, ensuring all analysis is grounded in current facts.
 
 #### Retry Logic ([run_with_retry](./main.py))
 
@@ -97,6 +98,13 @@ This project was built against Python 3.11+.
 It is suggested you create a virtual environment using your preferred tooling e.g. uv.
 
 Install dependencies: `pip install -r requirements.txt`
+
+The required dependencies are:
+- google-adk>=0.0.1
+- google-generativeai>=0.3.0
+- tavily-python>=0.3.0
+- gradio>=4.0.0
+- python-dotenv>=1.0.0
 
 ### API Keys Configuration
 
@@ -134,14 +142,17 @@ The project is organized as follows:
 *   `setup_env.py`: Script to set up the virtual environment and install dependencies.
 *   `run_app.py`: Helper script to run the application using the virtual environment.
 *   `requirements.txt`: Lists the Python dependencies required for the project.
+*   `generate_diagrams.py`: Script to generate architecture diagrams for documentation.
 
 ## Workflow
 
 The Popu Agent follows this workflow:
 
-1.  **Policy Analysis:** The Analyst agent researches the given policy topic using real data fetched via Tavily
+1.  **Policy Analysis:** The Analyst agent researches the given policy topic using real data fetched via Tavily or Google Search
 2.  **Critical Review:** The Critic agent examines the analysis for flaws and identifies risks
 3.  **Future Planning:** The Lobbyist agent proposes actionable policy directives based on the analysis
 4.  **Executive Summary:** The Synthesizer creates a concise summary for decision-makers
 
 Each stage of the workflow is displayed in real-time in the Gradio interface, allowing users to monitor the progress and results of each specialized agent.
+
+Users can export the complete analysis as a Markdown report using the "Download Full Report as MD" button.
