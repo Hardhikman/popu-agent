@@ -143,6 +143,11 @@ The project is organized as follows:
 *   `run_app.py`: Helper script to run the application using the virtual environment.
 *   `requirements.txt`: Lists the Python dependencies required for the project.
 *   `generate_diagrams.py`: Script to generate architecture diagrams for documentation.
+*   `images/`: Folder containing agent visualization diagrams:
+    *   `Analytic.png`: Visualization of the Policy Analyst Agent
+    *   `critic.png`: Visualization of the Policy Critic Agent
+    *   `lobby.png`: Visualization of the Policy Lobbyist Agent
+    *   `synth.png`: Visualization of the Policy Synthesizer Agent
 
 ## Workflow
 
@@ -156,3 +161,19 @@ The Popu Agent follows this workflow:
 Each stage of the workflow is displayed in real-time in the Gradio interface, allowing users to monitor the progress and results of each specialized agent.
 
 Users can export the complete analysis as a Markdown report using the "Download Full Report as MD" button.
+
+## Demo
+
+This section showcases visualizations of the specialized agents that power the Popu Agent system:
+
+### Policy Analyst Agent
+![Policy Analyst Agent](./images/Analytic.png "Policy Analyst Agent")
+
+### Policy Critic Agent
+![Policy Critic Agent](./images/critic.png "Policy Critic Agent")
+
+### Policy Lobbyist Agent
+![Policy Lobbyist Agent](./images/lobby.png "Policy Lobbyist Agent")
+
+### Policy Synthesizer Agent
+![Policy Synthesizer Agent](./images/synth.png "Policy Synthesizer Agent")
