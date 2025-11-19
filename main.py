@@ -11,6 +11,7 @@ from google.adk.agents import LlmAgent
 from google.adk.models.google_llm import Gemini
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.adk.tools import google_search
 from google.genai import types
 
 # --- CORE LOGIC ---
@@ -69,8 +70,12 @@ async def run_policy_analysis(topic, google_key, tavily_key):
     try:
         os.environ["GOOGLE_API_KEY"] = active_google_key
         model = Gemini(model="gemini-2.5-flash")
-        search_tool = tools.get_tavily_search_tool(api_key=active_tavily_key)
-        tool_list: List[Any] = [search_tool]
+        tavily_search_tool = tools.get_tavily_search_tool(api_key=active_tavily_key)
+        google_search_tool = google_search  # Using the pre-built Google Search tool
+        
+        # Tools for different agents
+        analyst_critic_tools: List[Any] = [tavily_search_tool]  # Analyst and Critic use Tavily
+        lobbyist_summary_tools: List[Any] = [google_search_tool]  # Lobbyist and Summary use Google Search
     except Exception as e:
         err = f"Setup Error: {str(e)}"
         yield err, err, err, err
@@ -87,12 +92,12 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         CRITICAL RULE: You MUST use the 'fetch_policy_data' tool to get real-world statistics.
         
         Structure your response strictly under:
-        1. Rural Society 2. Urban Society 3. Working Class 
-        4. Farmers 5. Manufacturing 6. Services 7. Women 8. Youth 9. Tribals.
+        1.Rural Society 2.Urban Society 3.Working Class 4.Backward class
+        5.Farmers 6.Manufacturing 7.Services 8.Women 9.Youth 10.Tribals.
         
-        For each section, cite 1 specific data point found via the tool.
+        For each section, cite 1 specific data point found with persusasive argument via the tool.
         """,
-        tools=tool_list
+        tools=analyst_critic_tools
     )
 
     critic_agent = LlmAgent(
@@ -108,7 +113,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         - Failed examples from other countries.
         - Direct negative impact on specific groups.
         """,
-        tools=tool_list
+        tools=analyst_critic_tools
     )
 
     lobbyist_agent = LlmAgent(
@@ -127,7 +132,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         
         MANDATE: Use the tool to find fresh data to support your lobbying pitch. Be persuasive but factual.
         """,
-        tools=tool_list
+        tools=lobbyist_summary_tools
     )
 
     summary_agent = LlmAgent(
@@ -146,7 +151,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         4. **Future Roadmap** (Top 2 directives from Lobbyist).
         5. **Final Recommendation**: Pass, Reject, or Amend.
         """,
-        tools=tool_list 
+        tools=lobbyist_summary_tools 
     )
 
     # 4. Execution
@@ -288,7 +293,7 @@ def generate_markdown_report(topic, analysis, critique, lobbyist, summary):
 # --- UI ---
 with gr.Blocks(title="ADK Policy Analyzer") as demo:
     gr.Markdown("# 🏛️ Data-Driven Policy Analyzer")
-    gr.Markdown("Powered by **Google ADK**, **Gemini 2.5 Flash**, and **Tavily**")
+    gr.Markdown("Powered by **Google ADK**, **Gemini 2.5 Flash**, **Tavily** and **Google Search**")
     
     # Store the latest results
     analysis_state = gr.State()
