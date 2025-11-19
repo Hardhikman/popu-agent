@@ -69,7 +69,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
     # 2. Setup
     try:
         os.environ["GOOGLE_API_KEY"] = active_google_key
-        model = Gemini(model="gemini-2.5-flash")
+        model = Gemini(model="gemini-2.5-flash") #gemini-2.5-flash-lite
         tavily_search_tool = tools.get_tavily_search_tool(api_key=active_tavily_key)
         google_search_tool = google_search  # Using the pre-built Google Search tool
         
