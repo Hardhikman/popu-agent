@@ -16,51 +16,14 @@ from google.genai import types
 
 # --- CORE LOGIC ---
 
-async def run_with_retry(runner, user_id, session_id, message, agent_name="Agent", max_retries=3):
-    """
-    Runs agent with 503 retry logic and DETAILED LOGGING.
-    """
-    print(f"\n▶️  [{agent_name}] Starting execution...")
-    start_time = time.time()
-    final_text = ""
-    
-    for attempt in range(max_retries):
-        try:
-            async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=message):
-                
-                # DEBUG: Print if the agent decides to call a tool
-                if hasattr(event, 'function_call') and event.function_call:
-                    print(f"   🛠️  [{agent_name}] Calling Tool: {event.function_call.name}")
-                
-                if event.is_final_response() and event.content and event.content.parts:
-                    # Process all parts of the response, not just the first one
-                    text_parts = [part.text for part in event.content.parts if hasattr(part, 'text') and part.text]
-                    final_text = '\n'.join(text_parts) if text_parts else ""
-            
-            # Execution successful
-            duration = time.time() - start_time
-            print(f"✅ [{agent_name}] Execution Complete ({duration:.2f}s)")
-            return final_text
-        
-        except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "429" in error_str:
-                if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt 
-                    print(f"   ⚠️  [{agent_name}] API Overload (503). Retrying in {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-            print(f"   ❌ [{agent_name}] Crashed: {str(e)}")
-            raise e
-    return final_text
-
 async def run_policy_analysis(topic, google_key, tavily_key):
     # 1. Auth check
     active_google_key = google_key if google_key else config.GOOGLE_API_KEY
     active_tavily_key = tavily_key if tavily_key else config.TAVILY_API_KEY
     
     if not active_google_key or not active_tavily_key:
-        err = "Error: Missing API Keys."
+        err = "Error: Missing API Keys. Please provide both Google API Key and Tavily API Key."
+        print(f"❌ Authentication Error: {err}")
         yield err, err, err, err
         return
 
@@ -69,15 +32,27 @@ async def run_policy_analysis(topic, google_key, tavily_key):
     # 2. Setup
     try:
         os.environ["GOOGLE_API_KEY"] = active_google_key
-        model = Gemini(model="gemini-2.5-flash") #gemini-2.5-flash-lite
-        tavily_search_tool = tools.get_tavily_search_tool(api_key=active_tavily_key)
-        google_search_tool = google_search  # Using the pre-built Google Search tool
         
-        # Tools for different agents
+        # Define retry configuration
+        retry_config = types.HttpRetryOptions(
+            attempts=5,  # Maximum retry attempts
+            exp_base=7,  # Delay multiplier
+            initial_delay=1,
+            http_status_codes=[429, 500, 503, 504],  # Retry on these HTTP errors
+        )
+        
+        model = Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config)
+        tavily_search_tool = tools.get_tavily_search_tool(api_key=active_tavily_key)
+        
+        # Use Google Search tool directly as shown in the example
+        google_search_tool = google_search
+        
+        # Tools for different agents - following project memory guidelines
         analyst_critic_tools: List[Any] = [tavily_search_tool]  # Analyst and Critic use Tavily
         lobbyist_summary_tools: List[Any] = [google_search_tool]  # Lobbyist and Summary use Google Search
     except Exception as e:
         err = f"Setup Error: {str(e)}"
+        print(f"❌ Setup Error: {err}")
         yield err, err, err, err
         return
 
@@ -91,7 +66,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         MANDATE: Be extremely concise. Use bullet points.
         CRITICAL RULE: You MUST use the 'fetch_policy_data' tool to get real-world statistics.
         
-        Structure your response strictly under:
+        Analyze the topic and structure your response strictly under:
         1.Rural Society 2.Urban Society 3.Working Class 4.Backward class
         5.Farmers 6.Manufacturing 7.Services 8.Women 9.Youth 10.Tribals.
         
@@ -108,10 +83,10 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         MANDATE: Be direct and ruthless. No polite padding.
         CRITICAL RULE: Use the 'fetch_policy_data' tool to find counter-evidence.
         
-        Critique the analysis focusing on:
+        Critique the analysis focusing by highlighting:
         - Economic feasibility (cite costs).
         - Failed examples from other countries.
-        - Direct negative impact on specific groups.
+        - Direct negative impact on specific groups in single paragraph.
         """,
         tools=analyst_critic_tools
     )
@@ -149,9 +124,9 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         2. **Key Data Points** (Top 3 facts from the agents).
         3. **Major Risks** (from Critique).
         4. **Future Roadmap** (Top 2 directives from Lobbyist).
-        5. **Final Recommendation**: Pass, Reject, or Amend.
+        5. **Final Recommendation**: Pass, Reject, or Amend with why(in single sentence)?
         """,
-        tools=lobbyist_summary_tools 
+        tools=lobbyist_summary_tools
     )
 
     # 4. Execution
@@ -166,10 +141,34 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         runner_analyst = Runner(agent=analyst_agent, app_name=app_name, session_service=session_service)
         msg = types.Content(role="user", parts=[types.Part(text=f"Analyze with data (be concise): '{topic}'")])
         
-        # LOGGING: Added agent_name parameter
-        analysis_text = await run_with_retry(runner_analyst, "user", "sess_analyst", msg, agent_name="Analyst")
+        # Run without custom retry wrapper
+        async for event in runner_analyst.run_async(user_id="user", session_id="sess_analyst", new_message=msg):
+            # DEBUG: Print if the agent decides to call a tool
+            if hasattr(event, 'function_call') and event.function_call:
+                print(f"   🛠️  [Analyst] Calling Tool: {event.function_call.name}")
+            
+            if event.is_final_response() and event.content and event.content.parts:
+                # Process all parts of the response, handling different part types explicitly
+                text_parts = []
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                    # Explicitly handle other part types to avoid warnings
+                    elif hasattr(part, 'function_call'):
+                        # Function calls are handled separately by the framework
+                        pass
+                    elif hasattr(part, 'thought_signature'):
+                        # Thought signatures are metadata, not content
+                        pass
+                analysis_text = '\n'.join(text_parts) if text_parts else ""
+        
+        print(f"✅ [Analyst] Execution Complete")
+        if not analysis_text.strip():
+            print("⚠️  [Analyst] Warning: No analysis content generated")
     except Exception as e:
-        yield f"Analyst Failed: {str(e)}", "", "", ""
+        error_msg = f"Analyst Failed: {str(e)}"
+        print(f"❌ {error_msg}")
+        yield error_msg, "", "", ""
         return
 
     status_log = ">>> Analyst finished. Starting Critic...\n"
@@ -182,9 +181,34 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         runner_critic = Runner(agent=critic_agent, app_name=app_name, session_service=session_service)
         msg = types.Content(role="user", parts=[types.Part(text=f"Critique this analysis ruthlessly: \n{analysis_text}")])
 
-        critique_text = await run_with_retry(runner_critic, "user", "sess_critic", msg, agent_name="Critic")
+        # Run without custom retry wrapper
+        async for event in runner_critic.run_async(user_id="user", session_id="sess_critic", new_message=msg):
+            # DEBUG: Print if the agent decides to call a tool
+            if hasattr(event, 'function_call') and event.function_call:
+                print(f"   🛠️  [Critic] Calling Tool: {event.function_call.name}")
+            
+            if event.is_final_response() and event.content and event.content.parts:
+                # Process all parts of the response, handling different part types explicitly
+                text_parts = []
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                    # Explicitly handle other part types to avoid warnings
+                    elif hasattr(part, 'function_call'):
+                        # Function calls are handled separately by the framework
+                        pass
+                    elif hasattr(part, 'thought_signature'):
+                        # Thought signatures are metadata, not content
+                        pass
+                critique_text = '\n'.join(text_parts) if text_parts else ""
+        
+        print(f"✅ [Critic] Execution Complete")
+        if not critique_text.strip():
+            print("⚠️  [Critic] Warning: No critique content generated")
     except Exception as e:
-        yield analysis_text, f"Critic Failed: {str(e)}", "", ""
+        error_msg = f"Critic Failed: {str(e)}"
+        print(f"❌ {error_msg}")
+        yield analysis_text, error_msg, "", ""
         return
 
     status_log = ">>> Critic finished. Starting Lobbyist...\n"
@@ -203,9 +227,34 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         """
         msg = types.Content(role="user", parts=[types.Part(text=lobbyist_input)])
         
-        lobbyist_text = await run_with_retry(runner_lobbyist, "user", "sess_lobbyist", msg, agent_name="Lobbyist")
+        # Run without custom retry wrapper
+        async for event in runner_lobbyist.run_async(user_id="user", session_id="sess_lobbyist", new_message=msg):
+            # DEBUG: Print if the agent decides to call a tool
+            if hasattr(event, 'function_call') and event.function_call:
+                print(f"   🛠️  [Lobbyist] Calling Tool: {event.function_call.name}")
+            
+            if event.is_final_response() and event.content and event.content.parts:
+                # Process all parts of the response, handling different part types explicitly
+                text_parts = []
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                    # Explicitly handle other part types to avoid warnings
+                    elif hasattr(part, 'function_call'):
+                        # Function calls are handled separately by the framework
+                        pass
+                    elif hasattr(part, 'thought_signature'):
+                        # Thought signatures are metadata, not content
+                        pass
+                lobbyist_text = '\n'.join(text_parts) if text_parts else ""
+        
+        print(f"✅ [Lobbyist] Execution Complete")
+        if not lobbyist_text.strip():
+            print("⚠️  [Lobbyist] Warning: No lobbyist content generated")
     except Exception as e:
-        yield analysis_text, critique_text, f"Lobbyist Failed: {str(e)}", ""
+        error_msg = f"Lobbyist Failed: {str(e)}"
+        print(f"❌ {error_msg}")
+        yield analysis_text, critique_text, error_msg, ""
         return
 
     status_log = ">>> Lobbyist finished. Synthesizing Final Report...\n"
@@ -231,10 +280,34 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         """
         msg = types.Content(role="user", parts=[types.Part(text=combined_input)])
         
-        summary_text = await run_with_retry(runner_summary, "user", "sess_summary", msg, agent_name="Synthesizer")
-
+        # Run without custom retry wrapper
+        async for event in runner_summary.run_async(user_id="user", session_id="sess_summary", new_message=msg):
+            # DEBUG: Print if the agent decides to call a tool
+            if hasattr(event, 'function_call') and event.function_call:
+                print(f"   🛠️  [Synthesizer] Calling Tool: {event.function_call.name}")
+            
+            if event.is_final_response() and event.content and event.content.parts:
+                # Process all parts of the response, handling different part types explicitly
+                text_parts = []
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                    # Explicitly handle other part types to avoid warnings
+                    elif hasattr(part, 'function_call'):
+                        # Function calls are handled separately by the framework
+                        pass
+                    elif hasattr(part, 'thought_signature'):
+                        # Thought signatures are metadata, not content
+                        pass
+                summary_text = '\n'.join(text_parts) if text_parts else ""
+        
+        print(f"✅ [Synthesizer] Execution Complete")
+        if not summary_text.strip():
+            print("⚠️  [Synthesizer] Warning: No summary content generated")
     except Exception as e:
-        yield analysis_text, critique_text, lobbyist_text, f"Summary Failed: {str(e)}"
+        error_msg = f"Summary Failed: {str(e)}"
+        print(f"❌ {error_msg}")
+        yield analysis_text, critique_text, lobbyist_text, error_msg
         return
 
     # Final Yield
