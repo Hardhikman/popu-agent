@@ -188,7 +188,7 @@ with gr.Blocks(title="ADK Policy Analyzer", theme=gr.themes.Soft()) as demo:
             with gr.Accordion("API Keys", open=False):
                 google_key_input = gr.Textbox(label="Google API Key", type="password")
                 tavily_key_input = gr.Textbox(label="Tavily API Key", type="password")
-            analyze_btn = gr.Button("🚀 Run", variant="primary")
+            analyze_btn = gr.Button("Run", variant="primary")
         with gr.Column(scale=2):
             with gr.Tabs():
                 with gr.TabItem("📊 Analysis"): analysis_out = gr.Markdown()

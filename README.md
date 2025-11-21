@@ -18,11 +18,11 @@ Popu Agent is an intelligent policy analysis platform that leverages multiple sp
 
 ### Problem Statement
 
-Policy analysis is a complex and time-consuming process that requires significant expertise to evaluate the potential impacts of proposed legislation across different societal groups. Traditional policy analysis often lacks real-time data integration, leading to outdated or incomplete assessments. Manual policy evaluation struggles to scale when dealing with multiple policy domains simultaneously, forcing analysts to choose between breadth and depth of analysis. The repetitive nature of structuring policy reviews and maintaining consistent evaluation criteria across different policies can quickly become mentally exhausting and drain analytical resources.
+Policy analysis is a complex and time-consuming process that requires significant expertise to evaluate the potential impacts of proposed legislation. Traditional policy analysis often lacks real-time data integration, leading to outdated or incomplete assessments. Manual policy evaluation struggles to scale when dealing with multiple policy domains simultaneously, forcing analysts to choose between breadth and depth of analysis. The repetitive nature of structuring policy reviews and maintaining consistent evaluation criteria across different policies can quickly become mentally exhausting and drain analytical resources.
 
 ### Solution Statement
 
-Popu Agent automates policy analysis by gathering real-time information from multiple sources, synthesizing key insights, and identifying potential impacts across different societal segments. The system generates comprehensive policy breakdowns based on specific parameters like target demographics, economic implications, and social impacts, significantly reducing the time spent on initial policy evaluation. Additionally, Popu Agent can iteratively refine policy proposals based on feedback, manage the entire analysis workflow, and suggest improvements based on comparative policy data—transforming policy analysis from a manual chore into a streamlined, data-driven process.
+Popu Agent automates policy analysis by gathering real-time information from multiple sources, synthesizing key insights, and identifying potential impacts. It generates comprehensive policy breakdowns based on real data, significantly reducing the time spent on initial policy evaluation. Additionally, Popu Agent can iteratively refine policy proposals based on feedback, manage the entire analysis workflow, and suggest improvements based on comparative policy data—transforming policy analysis from a manual chore into a streamlined, data-driven process.
 
 ### Architecture
 
@@ -32,19 +32,7 @@ The system orchestrates four specialized agents working in sequence:
 
 #### 1. Policy Analyst Agent
 
-This agent is responsible for researching and analyzing policy topics with real-world data. It structures its response under ten key societal segments to ensure comprehensive coverage:
-1. Rural Society
-2. Urban Society
-3. Working Class
-4. Backward class
-5. Farmers
-6. Manufacturing
-7. Services
-8. Women
-9. Youth
-10. Tribals
-
-The analyst must use the [fetch_policy_data](./tools.py) tool to gather real statistics for each section.
+This agent is responsible for researching and analyzing policy topics with real-world data. It uses the Tavily search tool to gather current statistics and information about the policy topic. The analyst structures its response with data-driven insights about the policy topic.
 
 #### 2. Policy Critic Agent
 
@@ -53,15 +41,15 @@ This agent provides a critical review of the initial analysis, highlighting risk
 - Failed examples from other countries
 - Direct negative impacts on specific groups
 
-The critic also uses the [fetch_policy_data](./tools.py) tool to find counter-evidence.
+The critic also uses the Tavily search tool to find counter-evidence and failed policy examples.
 
 #### 3. Policy Lobbyist Agent
 
-This agent proposes three concrete future policy directives based on the analysis and critique. For each directive, it must lobby for a specific societal section with persuasive arguments backed by fresh data from the tool.
+This agent proposes three concrete future policy directives based on the analysis and critique. For each directive, it provides persuasive arguments backed by fresh data from the Google Search tool.
 
 #### 4. Policy Synthesizer Agent
 
-This agent creates an executive summary of the complete analysis process, including key data points, major risks, and future roadmap recommendations in a concise format.
+This agent creates an executive summary of the complete analysis process, including key data points, major risks, and future roadmap recommendations in a concise format. It does not use any external tools.
 
 ### Essential Tools and Utilities
 
@@ -71,13 +59,13 @@ The Popu Agent and its sub-agents are equipped with tools to perform their tasks
 
 This tool is crucial for generating fact-based policy analysis. It searches the web for real-time data, statistics, and news about policies using either the Tavily API or Google Search. The tool returns formatted search results with sources, ensuring all analysis is grounded in current facts.
 
-#### Retry Logic ([run_with_retry](./main.py))
+#### Session Management
 
-A robust error handling mechanism that automatically retries API calls when encountering 503 or 429 errors, ensuring reliable operation even under high load conditions.
+Popu Agent uses unique session IDs for each analysis run to ensure that conversations from previous runs don't interfere with new analyses. This provides clean context windows for each policy analysis task.
 
 #### Report Export ([generate_markdown_report](./main.py))
 
-Allows users to export the complete policy analysis as a downloadable Markdown file. The exported report includes all sections of the analysis (Analysis, Critique, Lobbyist, and Summary) along with metadata such as the policy topic and generation timestamp. Users can download the report using the "Download Full Report as MD" button in the Gradio interface after completing an analysis.
+Allows users to export the complete policy analysis as a downloadable Markdown file. The exported report includes all sections of the analysis (Analysis, Critique, Lobbyist, and Summary) along with metadata such as the policy topic and generation timestamp. Users can download the report using the "Download Report" button in the Gradio interface after completing an analysis.
 
 ### Conclusion
 
@@ -87,9 +75,7 @@ Popu Agent is a compelling demonstration of how multi-agent systems, built with 
 
 ### Value Statement
 
-Popu Agent reduces policy analysis time by 6-8 hours per research session, enabling policy researchers to produce more comprehensive evaluations at higher quality. The agent also facilitates analysis across new policy domains that would otherwise be time-prohibitive given research constraints and subject matter expertise.
-
-If I had more time I would add an additional agent to scan various policy databases for historical implementation outcomes and use that research to inform my policy recommendations. This would require integrating additional data sources or building custom tools.
+Popu Agent reduces policy analysis time by automating the research, critique, and recommendation phases of policy analysis. This enables policy researchers to produce more comprehensive evaluations at higher quality in less time.
 
 ## Installation
 
@@ -153,14 +139,14 @@ The project is organized as follows:
 
 The Popu Agent follows this workflow:
 
-1.  **Policy Analysis:** The Analyst agent researches the given policy topic using real data fetched via Tavily or Google Search
+1.  **Policy Analysis:** The Analyst agent researches the given policy topic using real data fetched via Tavily Search
 2.  **Critical Review:** The Critic agent examines the analysis for flaws and identifies risks
 3.  **Future Planning:** The Lobbyist agent proposes actionable policy directives based on the analysis
 4.  **Executive Summary:** The Synthesizer creates a concise summary for decision-makers
 
 Each stage of the workflow is displayed in real-time in the Gradio interface, allowing users to monitor the progress and results of each specialized agent.
 
-Users can export the complete analysis as a Markdown report using the "Download Full Report as MD" button.
+Users can export the complete analysis as a Markdown report using the "Download Report" button.
 
 ## Demo
 
