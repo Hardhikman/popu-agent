@@ -127,7 +127,8 @@ async def run_policy_analysis(topic, google_key, tavily_key):
     
     analyst_agent = LlmAgent(
         name="Analyst", model=model, tools=[tavily_tool],
-        instruction="You are a Data-Driven Policy Analyst. Cite specific data points using search tools."
+        instruction="Analyze impact on: Rural, Urban, Working Class, Farmers, Women, Youth, Mfg/Services. "
+            "Cite 1 data point per sector." #"You are a Data-Driven Policy Analyst. Cite specific data points using search tools."
     )
     res, log = await run_agent_step("Analyst", analyst_agent, f"Analyze topic: {topic}", run_id)
     if "Error" in log: state["analysis"] = log; yield get_ui(); return
@@ -139,7 +140,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
     
     critic_agent = LlmAgent(
         name="Critic", model=model, tools=[tavily_tool],
-        instruction="You are a Policy Critic. Find flaws, costs, and missing demographics in the analysis and cite failed examples if any to substantiate the points."
+        instruction="You are a Policy Critic. Find flaws, costs, and missing demographics in the analysis and cite 2 failed examples seperately."
     )
     res, log = await run_agent_step("Critic", critic_agent, f"Critique this analysis:\n{state['analysis']}", run_id)
     if "Error" in log: state["critique"] = log; yield get_ui(); return
