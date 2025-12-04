@@ -15,6 +15,12 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.tools import google_search
 from google.genai import types
 
+# Agent Imports
+from agents.analyst import get_analyst_agent
+from agents.critic import get_critic_agent
+from agents.lobbyist import get_lobbyist_agent
+from agents.synthesizer import get_synthesizer_agent
+
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -118,42 +124,38 @@ async def run_policy_analysis(topic, google_key, tavily_key):
         yield f"Setup Failed: {e}", "", "", ""
         return
 
-    # 4. Pipeline Execution (Sequential Workflow)
+    # 4. Pipeline Execution (Parallel Workflow)
     state = {"analysis": "", "critique": "", "lobbyist": "", "summary": ""}
     def get_ui(): return state["analysis"], state["critique"], state["lobbyist"], state["summary"]
 
-    # --- ANALYST ---
-    yield "🔎 Analyst: Researching...", "", "", ""
+    # --- ANALYST & CRITIC (PARALLEL) ---
+    yield "🔎 Analyst & ⚖️ Critic: Researching & Reviewing...", "", "", ""
     
-    analyst_agent = LlmAgent(
-        name="Analyst", model=model, tools=[tavily_tool],
-        instruction="Analyze impact on: Rural, Urban, Working Class, Farmers, Women, Youth, Mfg/Services. "
-            "Cite 1 data point per sector." #"You are a Data-Driven Policy Analyst. Cite specific data points using search tools."
-    )
-    res, log = await run_agent_step("Analyst", analyst_agent, f"Analyze topic: {topic}", run_id)
-    if "Error" in log: state["analysis"] = log; yield get_ui(); return
-    state["analysis"] = res; yield get_ui()
+    analyst_agent = get_analyst_agent(model, [tavily_tool])
+    critic_agent = get_critic_agent(model, [tavily_tool])
 
-    # --- CRITIC ---
-    state["critique"] = "⚖️ Critic: Reviewing..."
-    yield get_ui()
-    
-    critic_agent = LlmAgent(
-        name="Critic", model=model, tools=[tavily_tool],
-        instruction="You are a Policy Critic. Find flaws, costs, and missing demographics in the analysis and cite 2 failed examples seperately."
+    # Run in parallel
+    results = await asyncio.gather(
+        run_agent_step("Analyst", analyst_agent, f"Analyze topic: {topic}", run_id),
+        run_agent_step("Critic", critic_agent, f"Critique topic: {topic}", run_id)
     )
-    res, log = await run_agent_step("Critic", critic_agent, f"Critique this analysis:\n{state['analysis']}", run_id)
-    if "Error" in log: state["critique"] = log; yield get_ui(); return
-    state["critique"] = res; yield get_ui()
+    
+    (analyst_res, analyst_log), (critic_res, critic_log) = results
+
+    if "Error" in analyst_log: state["analysis"] = analyst_log
+    else: state["analysis"] = analyst_res
+
+    if "Error" in critic_log: state["critique"] = critic_log
+    else: state["critique"] = critic_res
+    
+    yield get_ui()
+    if "Error" in analyst_log or "Error" in critic_log: return
 
     # --- LOBBYIST ---
     state["lobbyist"] = "🤝 Lobbyist: Strategizing..."
     yield get_ui()
     
-    lobbyist_agent = LlmAgent(
-        name="Lobbyist", model=model, tools=[google_tool],
-        instruction="You are a Strategist. Propose 3 directives based on the analysis and critique. Use Google Search for news."
-    )
+    lobbyist_agent = get_lobbyist_agent(model, [google_tool])
     prompt = f"Analysis: {state['analysis']}\nCritique: {state['critique']}\nTask: Propose 3 directives."
     res, log = await run_agent_step("Lobbyist", lobbyist_agent, prompt, run_id)
     if "Error" in log: state["lobbyist"] = log; yield get_ui(); return
@@ -163,10 +165,7 @@ async def run_policy_analysis(topic, google_key, tavily_key):
     state["summary"] = "📝 Synthesizer: Writing Report..."
     yield get_ui()
     
-    summary_agent = LlmAgent(
-        name="Synthesizer", model=model, tools=[], # No tools needed for summary
-        instruction="Create a 400-word Executive Summary. Verdict(Pass/Reject with why?), Data, Risks, Roadmap."
-    )
+    summary_agent = get_synthesizer_agent(model)
     prompt = f"Context:\n{state['analysis']}\n{state['critique']}\n{state['lobbyist']}\nSummarize."
     res, log = await run_agent_step("Synthesizer", summary_agent, prompt, run_id)
     state["summary"] = res; yield get_ui()
