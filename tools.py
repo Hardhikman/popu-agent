@@ -1,6 +1,10 @@
 import config
-from tavily import TavilyClient
+
+import feedparser
+import urllib.parse
 from google.adk.tools import FunctionTool
+
+from tavily import TavilyClient
 
 def get_tavily_search_tool(api_key=None):
     """
@@ -43,3 +47,39 @@ def get_tavily_search_tool(api_key=None):
 
     # Return the function wrapped as a tool
     return FunctionTool(fetch_policy_data)
+
+def get_rss_tool():
+    """
+    Returns a FunctionTool that fetches Google News RSS feeds.
+    """
+    def search_rss_news(query: str) -> str:
+        """
+        Searches Google News RSS for recent news, public sentiment, and controversies.
+        
+        Args:
+            query: The topic to search for news about.
+            
+        Returns:
+            String containing recent news headlines and summaries.
+        """
+        print(f"\n📰 [RSS Tool] Fetching news for: '{query}'...")
+        try:
+            encoded_query = urllib.parse.quote(query)
+            rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=en-IN&gl=IN&ceid=IN:en"
+            
+            feed = feedparser.parse(rss_url)
+            context = []
+            
+            # Get top 5 entries
+            for entry in feed.entries[:5]:
+                context.append(f"Title: {entry.title}\nLink: {entry.link}\nPublished: {entry.published}")
+                
+            result_text = "\n\n".join(context) if context else "No news found."
+            print(f"✅ [RSS Tool] Found {len(context)} news items.")
+            return result_text
+        except Exception as e:
+            error_msg = f"Error fetching RSS: {str(e)}"
+            print(f"❌ [RSS Tool] Failed: {error_msg}")
+            return error_msg
+
+    return FunctionTool(search_rss_news)

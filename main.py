@@ -81,18 +81,17 @@ async def run_agent_step(
         
     return final_text, f"✅ {agent_name} Completed."
 
-# --- CORE LOGIC ---
-async def run_policy_analysis(topic, google_key, tavily_key):
+# --- CORE LOGIC ---  
+async def run_policy_analysis(topic, google_key):
     # 1. Generate Run ID (Fixes Workflow Problem)
     run_id = str(uuid.uuid4())[:8]
     logger.info(f"--- Starting Analysis Run: {run_id} ---")
 
     # 2. Authentication
     active_google_key = google_key or getattr(config, 'GOOGLE_API_KEY', '')
-    active_tavily_key = tavily_key or getattr(config, 'TAVILY_API_KEY', '')
 
-    if not active_google_key or not active_tavily_key:
-        err = "❌ Authentication Error: Missing API Keys."
+    if not active_google_key:
+        err = "❌ Authentication Error: Missing Google API Key."
         yield err, err, err, err
         return
 
@@ -117,22 +116,22 @@ async def run_policy_analysis(topic, google_key, tavily_key):
             safety_settings=safety_settings
         )
         
-        tavily_tool = tools.get_tavily_search_tool(api_key=active_tavily_key)
+        # Hybrid Search Tools
+        ddg_tool = tools.get_tavily_search_tool()
+        rss_tool = tools.get_rss_tool()
         google_tool = google_search 
         
     except Exception as e:
         yield f"Setup Failed: {e}", "", "", ""
         return
-
-    # 4. Pipeline Execution (Parallel Workflow)
     state = {"analysis": "", "critique": "", "lobbyist": "", "summary": ""}
     def get_ui(): return state["analysis"], state["critique"], state["lobbyist"], state["summary"]
 
     # --- ANALYST & CRITIC (PARALLEL) ---
     yield "🔎 Analyst & ⚖️ Critic: Researching & Reviewing...", "", "", ""
     
-    analyst_agent = get_analyst_agent(model, [tavily_tool])
-    critic_agent = get_critic_agent(model, [tavily_tool])
+    analyst_agent = get_analyst_agent(model, [ddg_tool])
+    critic_agent = get_critic_agent(model, [rss_tool])
 
     # Run in parallel
     results = await asyncio.gather(
@@ -187,7 +186,6 @@ with gr.Blocks(title="ADK Policy Analyzer", theme=gr.themes.Soft()) as demo:
             topic_input = gr.Textbox(label="Topic", value="Universal Basic Income in India")
             with gr.Accordion("API Keys", open=False):
                 google_key_input = gr.Textbox(label="Google API Key", type="password")
-                tavily_key_input = gr.Textbox(label="Tavily API Key", type="password")
             analyze_btn = gr.Button("Run", variant="primary")
         with gr.Column(scale=2):
             with gr.Tabs():
@@ -200,7 +198,7 @@ with gr.Blocks(title="ADK Policy Analyzer", theme=gr.themes.Soft()) as demo:
 
     analyze_btn.click(
         fn=run_policy_analysis,
-        inputs=[topic_input, google_key_input, tavily_key_input],
+        inputs=[topic_input, google_key_input],
         outputs=[analysis_out, critique_out, lobbyist_out, summary_out]
     ).then(
         fn=generate_markdown_report,

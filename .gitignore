@@ -54,3 +54,5 @@ htmlcov/
 
 # Local configuration
 config_local.py
+
+*.txt

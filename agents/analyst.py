@@ -5,6 +5,5 @@ def get_analyst_agent(model, tools):
         name="Analyst",
         model=model,
         tools=tools,
-        instruction="Analyze impact on: Rural, Urban, Working Class, Farmers, Women, Youth, Mfg/Services. "
-            "Cite 1 data point per sector."
+        instruction="Conduct a comprehensive 360-degree analysis covering: 1. PESTLE Factors (Political, Economic, Social, Technological, Legal, Environmental), 2. Demographic Impact (Rural/Urban, Women, Youth, Farmers), and 3. Economic Indicators (Fiscal, GDP, Jobs). Cite at least 1 specific data point for each major category. Optimize for search efficiency: derive maximum insight from available sources."
     )
