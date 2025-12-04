@@ -3,12 +3,75 @@
 This project contains the core logic for Popu Agent, a multi-agent system designed to assist users in analyzing public policies. The agent is built using Google Agent Development Kit (ADK) with the Gemini 2.5 Flash model and follows a modular architecture.
 
 ## Policy Analysis Architecture
-![Policy Analysis Architecture](./policy_analysis_architecture.png "Policy Analysis Workflow")
+```mermaid
+graph LR
+    User([User Input]) --> Analyst[Policy Analyst]
+    Analyst --> Critic[Policy Critic]
+    Critic --> Lobbyist[Policy Lobbyist]
+    
+    Analyst -.-> Tavily[Tavily Search]
+    Critic -.-> Tavily
+    Lobbyist -.-> Tavily
+    
+    Analyst --> Synth[Policy Synthesizer]
+    Critic --> Synth
+    Lobbyist --> Synth
+    
+    Synth --> Report([Final Report])
+    
+    style User fill:#add8e6
+    style Report fill:#ffffe0
+    style Tavily fill:#f08080
+```
 
 The diagram above illustrates the end-to-end workflow of the Popu Agent system, showing how policy topics flow through the four specialized agents to produce comprehensive analysis.
 
 ## System Architecture
-![System Architecture](./system_architecture.png "System Components")
+```mermaid
+graph TD
+    subgraph Frontend
+        UI[Gradio Web UI]
+    end
+    
+    subgraph Backend
+        Main[Main App / Orchestrator]
+        Download[Download Function]
+    end
+    
+    subgraph Agents
+        Analyst[Analyst Agent]
+        Critic[Critic Agent]
+        Lobbyist[Lobbyist Agent]
+        Synth[Synthesizer Agent]
+    end
+    
+    subgraph External
+        Tavily[Tavily Search Tool]
+        Gemini[Gemini Model]
+    end
+
+    UI <--> Main
+    UI --> Download
+    
+    Main --> Analyst
+    Main --> Critic
+    
+    Analyst --> Lobbyist
+    Critic --> Lobbyist
+    
+    Analyst --> Synth
+    Critic --> Synth
+    Lobbyist --> Synth
+    
+    Analyst -.-> Tavily
+    Critic -.-> Tavily
+    Lobbyist -.-> Tavily
+    
+    Analyst -.-> Gemini
+    Critic -.-> Gemini
+    Lobbyist -.-> Gemini
+    Synth -.-> Gemini
+```
 
 The system architecture diagram shows the relationship between the core components of the Popu Agent, including the Gradio UI, agent orchestrator, specialized agents, and external tools.
 
