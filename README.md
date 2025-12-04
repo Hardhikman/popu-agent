@@ -6,12 +6,14 @@ This project contains the core logic for Popu Agent, a multi-agent system design
 ```mermaid
 graph LR
     User([User Input]) --> Analyst[Policy Analyst]
-    Analyst --> Critic[Policy Critic]
-    Critic --> Lobbyist[Policy Lobbyist]
+    User --> Critic[Policy Critic]
+    
+    Analyst --> Lobbyist[Policy Lobbyist]
+    Critic --> Lobbyist
     
     Analyst -.-> Tavily[Tavily Search]
-    Critic -.-> Tavily
-    Lobbyist -.-> Tavily
+    Critic -.-> RSS[RSS Feed]
+    Lobbyist -.-> Google[Google Search]
     
     Analyst --> Synth[Policy Synthesizer]
     Critic --> Synth
@@ -22,6 +24,8 @@ graph LR
     style User fill:#add8e6
     style Report fill:#ffffe0
     style Tavily fill:#f08080
+    style RSS fill:#f08080
+    style Google fill:#f08080
 ```
 
 The diagram above illustrates the end-to-end workflow of the Popu Agent system, showing how policy topics flow through the four specialized agents to produce comprehensive analysis.
@@ -47,14 +51,17 @@ graph TD
     
     subgraph External
         Tavily[Tavily Search Tool]
+        RSS[RSS Feed Tool]
+        Google[Google Search Tool]
         Gemini[Gemini Model]
     end
 
     UI <--> Main
     UI --> Download
     
-    Main --> Analyst
-    Main --> Critic
+    %% Parallel Execution
+    Main -- Parallel --> Analyst
+    Main -- Parallel --> Critic
     
     Analyst --> Lobbyist
     Critic --> Lobbyist
@@ -64,8 +71,8 @@ graph TD
     Lobbyist --> Synth
     
     Analyst -.-> Tavily
-    Critic -.-> Tavily
-    Lobbyist -.-> Tavily
+    Critic -.-> RSS
+    Lobbyist -.-> Google
     
     Analyst -.-> Gemini
     Critic -.-> Gemini
